@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Healthcare Operations Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#0B1B2B;--panel:#122a3d;--panel-2:#0f2333;--line:#20394d;--accent:#3FA7D6;--good:#4CAF82;--warn:#E8A33D;--bad:#E15554;--text:#EAF2F5;--muted:#7C93A3;
+    --font-display:'Space Grotesk','Segoe UI',sans-serif;--font-body:'Inter','Segoe UI',sans-serif;--font-mono:'IBM Plex Mono','Courier New',monospace;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);-webkit-font-smoothing:antialiased;}
+  .app{display:flex;min-height:100vh;}
+  .rail{width:220px;flex-shrink:0;background:var(--panel-2);border-right:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;}
+  .brand{font-family:var(--font-display);font-weight:700;font-size:16px;padding:0 8px 4px;}
+  .brand small{display:block;font-family:var(--font-mono);font-weight:500;font-size:10px;color:var(--muted);letter-spacing:.12em;margin-top:4px;}
+  .nav{margin-top:28px;display:flex;flex-direction:column;gap:2px;}
+  .nav button{all:unset;cursor:pointer;padding:10px 12px;border-radius:8px;font-size:13.5px;color:var(--muted);display:flex;align-items:center;gap:10px;font-weight:500;}
+  .nav button .dot{width:6px;height:6px;border-radius:50%;background:var(--line);}
+  .nav button:hover,.nav button.active{background:#16324580;color:var(--text);}
+  .nav button.active .dot{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+  .rail-foot{margin-top:auto;font-family:var(--font-mono);font-size:10px;color:var(--muted);padding:0 8px;line-height:1.6;}
+  .main{flex:1;padding:26px 34px 60px;max-width:1280px;min-width:0;}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:14px;}
+  .topbar h1{font-family:var(--font-display);font-size:22px;margin:0;font-weight:600;}
+  .topbar p{margin:4px 0 0;color:var(--muted);font-size:13px;}
+  .source-tag{font-family:var(--font-mono);font-size:10.5px;background:var(--panel);border:1px solid var(--line);padding:6px 12px;border-radius:20px;color:var(--muted);}
+  .source-tag b{color:var(--accent);}
+  .section{display:none;}.section.active{display:block;}
+  .vitals{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px;}
+  .vital{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+  .vital .label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;font-weight:600;}
+  .vital .value{font-family:var(--font-mono);font-size:23px;font-weight:600;margin-top:6px;}
+  .vital .sub{font-size:11px;margin-top:4px;color:var(--muted);font-family:var(--font-mono);}
+  .grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:16px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;min-width:0;}
+  .panel h3{font-family:var(--font-display);font-size:14px;margin:0 0 2px;font-weight:600;}
+  .panel .sub{font-size:11.5px;color:var(--muted);margin-bottom:14px;}
+  .chart{height:230px;position:relative;}
+  .tablewrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  td{padding:8px;border-bottom:1px solid #ffffff08;white-space:nowrap;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-family:var(--font-mono);font-size:10.5px;font-weight:600;}
+  .badge.good{background:#4CAF8222;color:var(--good);}.badge.warn{background:#E8A33D22;color:var(--warn);}.badge.bad{background:#E1555422;color:var(--bad);}
+  .recs{display:flex;flex-direction:column;gap:10px;}
+  .rec{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;}
+  .rec.prio-high{border-left-color:var(--bad);}.rec.prio-medium{border-left-color:var(--warn);}.rec.prio-low{border-left-color:var(--good);}
+  .rec .rtag{font-family:var(--font-mono);font-size:9.5px;color:var(--muted);letter-spacing:.08em;}
+  .rec h4{margin:2px 0 4px;font-size:13px;font-weight:600;}
+  .rec p{margin:0;font-size:12px;color:#B9CBD6;line-height:1.5;}
+  .note{font-size:13px;line-height:1.7;color:#C6D6DF;}
+  .footer-note{color:var(--muted);font-size:11px;margin-top:28px;font-family:var(--font-mono);}
+  @media(max-width:900px){.app{flex-direction:column}.rail{width:auto;flex-direction:row;overflow-x:auto;padding:10px}.nav{flex-direction:row;margin:0}.brand,.rail-foot{display:none}
+    .vitals{grid-template-columns:1fr 1fr}.grid2,.grid3{grid-template-columns:1fr}.main{padding:18px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="rail">
+    <div class="brand">Healthcare Ops<small>INTELLIGENCE DASHBOARD</small></div>
+    <div class="nav">
+      <button class="nav-btn active" data-target="overview"><span class="dot"></span>Overview</button>
+      <button class="nav-btn" data-target="conditions"><span class="dot"></span>Conditions</button>
+      <button class="nav-btn" data-target="forecast"><span class="dot"></span>Forecast</button>
+      <button class="nav-btn" data-target="decisions"><span class="dot"></span>Decisions</button>
+      <button class="nav-btn" data-target="about"><span class="dot"></span>Methodology</button>
+    </div>
+    <div class="rail-foot">10,000 ADMISSIONS<br>6 CONDITIONS · 5 PAYERS</div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div><h1 id="page-title">Operations Overview</h1><p id="page-sub">Network-wide performance across all admissions on record</p></div>
+      <div class="source-tag">SOURCE: <b>healthcare_dataset.csv</b> · <span id="date-range-tag"></span></div>
+    </div>
+
+    <div class="section active" id="overview">
+      <div class="vitals" id="vitals-row"></div>
+      <div class="grid2">
+        <div class="panel"><h3>Monthly Admission Volume</h3><div class="sub">Complete months only, network-wide</div><div class="chart"><canvas id="volumeChart"></canvas></div></div>
+        <div class="panel"><h3>Admission Type Mix</h3><div class="sub">Elective vs Urgent vs Emergency</div><div class="chart"><canvas id="admitTypeChart"></canvas></div></div>
+      </div>
+      <div class="grid3">
+        <div class="panel"><h3>Test Results</h3><div class="sub">All admissions</div><div class="chart" style="height:190px"><canvas id="testResultChart"></canvas></div></div>
+        <div class="panel"><h3>Age Distribution</h3><div class="sub">Patients by age band</div><div class="chart" style="height:190px"><canvas id="ageChart"></canvas></div></div>
+        <div class="panel"><h3>Gender Split</h3><div class="sub">All admissions</div><div class="chart" style="height:190px"><canvas id="genderChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="section" id="conditions">
+      <div class="panel" style="margin-bottom:16px"><h3>Condition Scorecard</h3>
+        <div class="sub">Status = combined deviation of stay length, billing and abnormal-result rate from the cross-condition mean</div>
+        <div class="tablewrap"><table id="condTable"></table></div></div>
+      <div class="grid2">
+        <div class="panel"><h3>Average Billing by Condition</h3><div class="sub">Per admission</div><div class="chart"><canvas id="billingByCondChart"></canvas></div></div>
+        <div class="panel"><h3>Average Length of Stay</h3><div class="sub">Days, by condition</div><div class="chart"><canvas id="losByCondChart"></canvas></div></div>
+      </div>
+      <div class="grid2">
+        <div class="panel"><h3>Billing by Insurance Provider</h3><div class="sub">Average per admission</div><div class="chart"><canvas id="insChart"></canvas></div></div>
+        <div class="panel"><h3>Medications Prescribed</h3><div class="sub">Admissions on record</div><div class="chart"><canvas id="medChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="section" id="forecast">
+      <div class="panel" style="margin-bottom:16px"><h3>Network Admissions: 6-Month Forecast</h3><div class="sub">Linear regression on monthly history</div><div class="chart" style="height:280px"><canvas id="forecastChart"></canvas></div></div>
+      <div class="grid2">
+        <div class="panel"><h3>Trend Summary</h3><div id="trendSummary"></div></div>
+        <div class="panel"><h3>Per-Condition Trend</h3><div class="sub">Slope, admissions/month</div><div class="chart"><canvas id="condTrendChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="section" id="decisions">
+      <div class="panel"><h3>Recommended Actions</h3><div class="sub">Rule-based engine comparing each condition and payer with the network average</div><div class="recs" id="recsList"></div></div>
+    </div>
+
+    <div class="section" id="about">
+      <div class="panel"><h3>Methodology &amp; Data Notes</h3><div class="sub">How this dashboard is built</div>
+        <p class="note">
+        <b>Data.</b> 10,000 patient-level admissions (<span id="about-range"></span>) with demographics, condition, admission/discharge dates, billing, admission type, insurer, medication and test results. Length of stay = discharge date − admission date.<br><br>
+        <b>KPIs &amp; scorecard.</b> pandas group-by aggregation. A condition's status is the sum of z-scores for stay length, billing and abnormal-result rate relative to the six conditions (Watch &gt; 0.5, Needs Attention &gt; 1.5).<br><br>
+        <b>Forecast.</b> Ordinary least-squares regression (scikit-learn) on monthly admission counts, projected 6 months. Partial first/last months are excluded so they don't bias the slope.<br><br>
+        <b>Decision engine.</b> Rules flag high-deviation conditions, above-average Emergency share, and payers whose average billing exceeds the network mean by &gt;1%.<br><br>
+        <b>Caveat.</b> This is the widely used synthetic "Healthcare Dataset": values are randomly generated, so metrics cluster near the average and the forecast is flat (low R²). The pipeline will surface sharper signals on a real EHR/ADT extract. Reproduce all numbers with <code>python src/healthcare_ops_analytics.py</code>.
+        </p></div>
+    </div>
+    <div class="footer-note">HEALTHCARE OPERATIONS INTELLIGENCE DASHBOARD · INFOSYS SPRINGBOARD VIRTUAL INTERNSHIP 7.0</div>
+  </div>
+</div>
+<script>
+const DATA = {"kpis": {"total_admissions": 10000, "avg_length_of_stay": 15.56, "avg_billing": 25516.81, "abnormal_test_rate": 0.3456, "emergency_share": 0.3367, "date_range": ["2018-10-30", "2023-10-30"]}, "scorecard": [{"Medical Condition": "Arthritis", "admissions": 1650, "avg_los": 15.99, "avg_billing": 25187.631, "abnormal_rate": 0.336, "emergency_share": 0.321, "avg_age": 51.531, "status": "On Target"}, {"Medical Condition": "Asthma", "admissions": 1708, "avg_los": 15.481, "avg_billing": 25416.87, "abnormal_rate": 0.365, "emergency_share": 0.326, "avg_age": 51.446, "status": "Watch"}, {"Medical Condition": "Cancer", "admissions": 1703, "avg_los": 15.48, "avg_billing": 25539.096, "abnormal_rate": 0.339, "emergency_share": 0.339, "avg_age": 51.584, "status": "On Target"}, {"Medical Condition": "Diabetes", "admissions": 1623, "avg_los": 15.574, "avg_billing": 26060.116, "abnormal_rate": 0.331, "emergency_share": 0.343, "avg_age": 51.802, "status": "Watch"}, {"Medical Condition": "Hypertension", "admissions": 1688, "avg_los": 15.43, "avg_billing": 25198.034, "abnormal_rate": 0.357, "emergency_share": 0.342, "avg_age": 50.738, "status": "On Target"}, {"Medical Condition": "Obesity", "admissions": 1628, "avg_los": 15.422, "avg_billing": 25720.843, "abnormal_rate": 0.345, "emergency_share": 0.35, "avg_age": 51.634, "status": "On Target"}], "monthly_labels": ["2018-11", "2018-12", "2019-01", "2019-02", "2019-03", "2019-04", "2019-05", "2019-06", "2019-07", "2019-08", "2019-09", "2019-10", "2019-11", "2019-12", "2020-01", "2020-02", "2020-03", "2020-04", "2020-05", "2020-06", "2020-07", "2020-08", "2020-09", "2020-10", "2020-11", "2020-12", "2021-01", "2021-02", "2021-03", "2021-04", "2021-05", "2021-06", "2021-07", "2021-08", "2021-09", "2021-10", "2021-11", "2021-12", "2022-01", "2022-02", "2022-03", "2022-04", "2022-05", "2022-06", "2022-07", "2022-08", "2022-09", "2022-10", "2022-11", "2022-12", "2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06", "2023-07", "2023-08", "2023-09", "2023-10"], "monthly_admissions": [145, 150, 178, 138, 152, 180, 165, 167, 181, 151, 161, 159, 160, 181, 171, 159, 179, 176, 195, 171, 154, 175, 150, 159, 182, 173, 162, 164, 180, 164, 169, 175, 168, 182, 160, 176, 183, 180, 162, 167, 178, 171, 156, 174, 151, 151, 175, 207, 150, 159, 164, 150, 161, 150, 157, 146, 173, 186, 155, 174], "network_forecast": {"slope_per_month": 0.027, "r_squared": 0.0013, "forecast": [167.4, 167.4, 167.4, 167.4, 167.5, 167.5]}, "condition_forecasts": {"Diabetes": {"slope_per_month": 0.005, "r_squared": 0.0002, "forecast": [27.2, 27.2, 27.2, 27.2, 27.2, 27.2]}, "Asthma": {"slope_per_month": 0.033, "r_squared": 0.0149, "forecast": [29.4, 29.5, 29.5, 29.5, 29.6, 29.6]}, "Obesity": {"slope_per_month": 0.039, "r_squared": 0.018, "forecast": [28.3, 28.3, 28.4, 28.4, 28.4, 28.5]}, "Arthritis": {"slope_per_month": -0.011, "r_squared": 0.0012, "forecast": [27.2, 27.2, 27.2, 27.1, 27.1, 27.1]}, "Hypertension": {"slope_per_month": -0.021, "r_squared": 0.0047, "forecast": [27.5, 27.5, 27.5, 27.4, 27.4, 27.4]}, "Cancer": {"slope_per_month": -0.018, "r_squared": 0.0038, "forecast": [27.8, 27.8, 27.8, 27.7, 27.7, 27.7]}}, "admission_type_counts": {"Urgent": 3391, "Emergency": 3367, "Elective": 3242}, "test_result_counts": {"Abnormal": 3456, "Inconclusive": 3277, "Normal": 3267}, "insurance_billing": {"Aetna": 25838.0, "Blue Cross": 25652.0, "Cigna": 25657.0, "Medicare": 25002.0, "UnitedHealthcare": 25405.0}, "insurance_counts": {"Cigna": 2040, "Blue Cross": 2032, "Aetna": 2025, "UnitedHealthcare": 1978, "Medicare": 1925}, "gender_counts": {"Female": 5075, "Male": 4925}, "age_bins": [1774, 1495, 1397, 1521, 1467, 2346], "medication_counts": {"Penicillin": 2079, "Lipitor": 2015, "Ibuprofen": 1976, "Aspirin": 1968, "Paracetamol": 1962}, "recommendations": [{"priority": "medium", "category": "Quality & Cost", "title": "Asthma: metrics trending above network average", "detail": "Avg stay 15.5 days, billing $25,417, abnormal-result rate 36.5%. Monitor next quarter before escalating."}, {"priority": "medium", "category": "Quality & Cost", "title": "Diabetes: metrics trending above network average", "detail": "Avg stay 15.6 days, billing $26,060, abnormal-result rate 33.1%. Monitor next quarter before escalating."}, {"priority": "low", "category": "Revenue Cycle", "title": "Aetna: average billing $25,838 above network average", "detail": "$25,838 vs network average $25,517. Confirm coding and claims accuracy for Aetna in the next billing audit."}]};
+Chart.defaults.color='#7C93A3';Chart.defaults.font.size=11;Chart.defaults.borderColor='#20394d';
+const C={accent:'#3FA7D6',good:'#4CAF82',warn:'#E8A33D',bad:'#E15554',grid:'#1c3547'};
+const CC=['#3FA7D6','#E15554','#E8A33D','#4CAF82','#9C7FE0','#5BC8C4'];
+const opt=(x={})=>Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}},x);
+const sc=(y={},x={})=>({scales:{y:Object.assign({grid:{color:C.grid}},y),x:Object.assign({grid:{display:false}},x)}});
+const $=id=>document.getElementById(id);
+const k=DATA.kpis;
+$('date-range-tag').textContent=k.date_range[0]+' → '+k.date_range[1];
+$('about-range').textContent=k.date_range[0]+' to '+k.date_range[1];
+
+[["Total Admissions",k.total_admissions.toLocaleString(),"on record"],
+ ["Avg Length of Stay",k.avg_length_of_stay+" d","admission to discharge"],
+ ["Avg Billing",'$'+Math.round(k.avg_billing).toLocaleString(),"per admission"],
+ ["Abnormal Test Rate",(k.abnormal_test_rate*100).toFixed(1)+'%',"of all results"],
+ ["Emergency Share",(k.emergency_share*100).toFixed(1)+'%',"of admissions"]]
+.forEach(v=>$('vitals-row').insertAdjacentHTML('beforeend',`<div class="vital"><div class="label">${v[0]}</div><div class="value">${v[1]}</div><div class="sub">${v[2]}</div></div>`));
+
+new Chart($('volumeChart'),{type:'line',data:{labels:DATA.monthly_labels,datasets:[{data:DATA.monthly_admissions,borderColor:C.accent,backgroundColor:'#3FA7D622',borderWidth:2,pointRadius:0,fill:true,tension:.3}]},options:opt(sc({},{ticks:{maxTicksLimit:8}}))});
+new Chart($('admitTypeChart'),{type:'doughnut',data:{labels:Object.keys(DATA.admission_type_counts),datasets:[{data:Object.values(DATA.admission_type_counts),backgroundColor:[C.accent,C.warn,C.bad],borderColor:'#0f2333',borderWidth:2}]},options:opt({cutout:'62%',plugins:{legend:{position:'right',labels:{boxWidth:10}}}})});
+new Chart($('testResultChart'),{type:'bar',data:{labels:Object.keys(DATA.test_result_counts),datasets:[{data:Object.values(DATA.test_result_counts),backgroundColor:[C.bad,C.warn,C.good],borderRadius:6}]},options:opt(sc())});
+new Chart($('ageChart'),{type:'bar',data:{labels:['18-29','30-39','40-49','50-59','60-69','70-85'],datasets:[{data:DATA.age_bins,backgroundColor:C.accent,borderRadius:6}]},options:opt(sc())});
+new Chart($('genderChart'),{type:'doughnut',data:{labels:Object.keys(DATA.gender_counts),datasets:[{data:Object.values(DATA.gender_counts),backgroundColor:[C.accent,C.warn],borderColor:'#0f2333',borderWidth:2}]},options:opt({cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10}}}})});
+
+let rows='<tr><th>Condition</th><th>Admissions</th><th>Avg LOS</th><th>Avg Billing</th><th>Abnormal</th><th>Emergency</th><th>Status</th></tr>';
+DATA.scorecard.forEach(r=>{const b=r.status==='Needs Attention'?'bad':r.status==='Watch'?'warn':'good';
+ rows+=`<tr><td><b>${r["Medical Condition"]}</b></td><td>${r.admissions.toLocaleString()}</td><td>${r.avg_los.toFixed(1)} d</td><td>$${Math.round(r.avg_billing).toLocaleString()}</td><td>${(r.abnormal_rate*100).toFixed(1)}%</td><td>${(r.emergency_share*100).toFixed(1)}%</td><td><span class="badge ${b}">${r.status}</span></td></tr>`;});
+$('condTable').innerHTML=rows;
+const cl=DATA.scorecard.map(r=>r["Medical Condition"]);
+new Chart($('billingByCondChart'),{type:'bar',data:{labels:cl,datasets:[{data:DATA.scorecard.map(r=>Math.round(r.avg_billing)),backgroundColor:CC,borderRadius:6}]},options:opt(Object.assign({indexAxis:'y'},{scales:{x:{min:24000,grid:{color:C.grid},ticks:{callback:v=>'$'+v/1000+'k'}},y:{grid:{display:false}}}}))});
+new Chart($('losByCondChart'),{type:'bar',data:{labels:cl,datasets:[{data:DATA.scorecard.map(r=>+r.avg_los.toFixed(1)),backgroundColor:CC,borderRadius:6}]},options:opt(sc({min:14,title:{display:true,text:'Days'}},{ticks:{font:{size:9.5}}}))});
+new Chart($('insChart'),{type:'bar',data:{labels:Object.keys(DATA.insurance_billing),datasets:[{data:Object.values(DATA.insurance_billing),backgroundColor:C.accent,borderRadius:6}]},options:opt(sc({min:24000,ticks:{callback:v=>'$'+v/1000+'k'}},{ticks:{font:{size:9.5}}}))});
+new Chart($('medChart'),{type:'bar',data:{labels:Object.keys(DATA.medication_counts),datasets:[{data:Object.values(DATA.medication_counts),backgroundColor:C.good,borderRadius:6}]},options:opt({indexAxis:'y',scales:{x:{grid:{color:C.grid}},y:{grid:{display:false}}}})});
+
+const H=DATA.monthly_labels,n=DATA.network_forecast.forecast.length;
+const fl=Array.from({length:n},(_,i)=>{const[y,m]=H[H.length-1].split('-').map(Number);const d=new Date(Date.UTC(y,m+i,1));return d.toISOString().slice(0,7);});
+const last=DATA.monthly_admissions[DATA.monthly_admissions.length-1];
+new Chart($('forecastChart'),{type:'line',data:{labels:[...H,...fl],datasets:[
+ {label:'Historical',data:[...DATA.monthly_admissions,...Array(n).fill(null)],borderColor:'#7C93A3',borderWidth:2,pointRadius:0,tension:.25},
+ {label:'Forecast',data:[...Array(H.length-1).fill(null),last,...DATA.network_forecast.forecast],borderColor:C.accent,borderWidth:2.4,borderDash:[5,3],pointRadius:0}]},
+ options:opt(Object.assign(sc({},{ticks:{maxTicksLimit:12}}),{plugins:{legend:{labels:{boxWidth:10}}}}))});
+const nf=DATA.network_forecast, recent=Math.round(DATA.monthly_admissions.slice(-6).reduce((a,b)=>a+b,0)/6);
+$('trendSummary').innerHTML=`<div style="display:flex;align-items:baseline;gap:10px;margin:10px 0 14px"><div style="font-family:var(--font-mono);font-size:34px;font-weight:600;color:var(--good)">${nf.slope_per_month>0?'+':''}${nf.slope_per_month}</div><div style="font-size:12.5px;color:var(--muted)">admissions / month<br>trend slope (R² = ${nf.r_squared})</div></div>
+<p class="note" style="font-size:12.5px">Volume is essentially flat: the fitted trend explains almost none of the month-to-month variation. The forecast is ~<b>${Math.round(nf.forecast[n-1])}</b> admissions/month versus a recent 6-month average of <b>${recent}</b>. This is expected for a randomly generated dataset; a real feed would show seasonality and genuine trend.</p>`;
+const cf=DATA.condition_forecasts;
+new Chart($('condTrendChart'),{type:'bar',data:{labels:Object.keys(cf),datasets:[{data:Object.values(cf).map(f=>f.slope_per_month),backgroundColor:Object.values(cf).map(f=>f.slope_per_month>=0?C.accent:C.bad),borderRadius:6}]},options:opt(sc({},{ticks:{font:{size:9.5}}}))});
+
+$('recsList').innerHTML=DATA.recommendations.length?DATA.recommendations.map(r=>`<div class="rec prio-${r.priority}"><div class="rtag">${r.category.toUpperCase()} · ${r.priority.toUpperCase()} PRIORITY</div><h4>${r.title}</h4><p>${r.detail}</p></div>`).join(''):'<p class="note">Nothing deviates materially from the network average.</p>';
+
+const T={overview:["Operations Overview","Network-wide performance across all admissions on record"],conditions:["Condition Scorecard","Per-condition KPIs against the network average"],forecast:["Volume Forecast","Trend-based projection of admission volume"],decisions:["Decision Analytics","Prioritized, rule-generated recommendations"],about:["Methodology","How the data and analytics work"]};
+document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>{
+ document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+ document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$(b.dataset.target).classList.add('active');
+ $('page-title').textContent=T[b.dataset.target][0];$('page-sub').textContent=T[b.dataset.target][1];}));
+</script>
+</body>
+</html>
